@@ -1,153 +1,36 @@
--- Looking at the dataset
+-- Taking a look at the dataset
 SELECT
 	*
 FROM
 	sales_data
 
--- Calculating the total revenue by product line for Q1 of 2003
+-- Figuring out and sorting the sales numbers of each product line by qtr and year
+
 SELECT
-	SUM(sales) as revenue,
-	product_line
+    SUM(sales) as revenue,
+    product_line,
+	qtr_id,
+	year_id
 FROM
-	sales_data
-WHERE
-	qtr_id = 1 AND
-	year_id = 2003 
+    sales_data
 GROUP BY
-	product_line;
+    product_line,
+	year_id,
+	qtr_id
+ORDER BY
+	year_id,
+    qtr_id;
 
--- Calculating the total revenue by product line for Q2 of 2003
+-- Calculating the total sales for every year independently
 SELECT
-	SUM(sales) as revenue,
-	product_line
+	SUM(Sales),
+	year_id
 FROM
 	sales_data
-WHERE
-	qtr_id = 2 AND
-	year_id = 2003 
 GROUP BY
-	product_line;
-
--- Calculating the total revenue by product line for Q3 of 2003
-SELECT
-	SUM(sales) as revenue,
-	product_line
-FROM
-	sales_data
-WHERE
-	qtr_id = 3 AND
-	year_id = 2003 
-GROUP BY
-	product_line;
-
--- Calculating the total revenue by product line for Q4 of 2003
-SELECT
-	SUM(sales) as revenue,
-	product_line
-FROM
-	sales_data
-WHERE
-	qtr_id = 4 AND
-	year_id = 2003 
-GROUP BY
-	product_line;
-
--- Calculating the total revenue by product line for Q1 of 2004
-SELECT
-	SUM(sales) as revenue,
-	product_line
-FROM
-	sales_data
-WHERE
-	qtr_id = 1 AND
-	year_id = 2004 
-GROUP BY
-	product_line;
-
--- Calculating the total revenue by product line for Q2 of 2004
-SELECT
-	SUM(sales) as revenue,
-	product_line
-FROM
-	sales_data
-WHERE
-	qtr_id = 2 AND
-	year_id = 2004 
-GROUP BY
-	product_line;
-
--- Calculating the total revenue by product line for Q3 of 2004
-SELECT
-	SUM(sales) as revenue,
-	product_line
-FROM
-	sales_data
-WHERE
-	qtr_id = 3 AND
-	year_id = 2004 
-GROUP BY
-	product_line;
-
--- Calculating the total revenue by product line for Q4 of 2004 
-SELECT
-	SUM(sales) as revenue,
-	product_line
-FROM
-	sales_data
-WHERE
-	qtr_id = 4 AND
-	year_id = 2004 
-GROUP BY
-	product_line;
--- Calculating the total revenue by product line for Q1of 2005
-SELECT
-	SUM(sales) as revenue,
-	product_line
-FROM
-	sales_data
-WHERE
-	qtr_id = 1 AND
-	year_id = 2005 
-GROUP BY
-	product_line;
-
--- Calculating the total revenue by product line for Q2 of 2005 
-SELECT
-	SUM(sales) as revenue,
-	product_line
-FROM
-	sales_data
-WHERE
-	qtr_id = 2 AND
-	year_id = 2005 
-GROUP BY
-	product_line;
-
--- Calculating the total sales for the year 2003
-SELECT
-	SUM(Sales)
-FROM
-	sales_data
-WHERE
-	year_id = 2003;
-
--- Calculating the total sales for the year 2004
-SELECT
-	SUM(Sales)
-	
-FROM
-	sales_data
-WHERE
-	year_id = 2004;
-
--- Calculating the total sales for the year 2005
-SELECT
-	SUM(Sales)
-	
-FROM
-	sales_data
-WHERE
-	year_id = 2005;
+	year_id
+ORDER BY
+	year_id
 	
 -- Calculate the total sales of all years combined 
 SELECT
@@ -155,68 +38,36 @@ SELECT
 FROM
 	sales_data;
 
--- Calculating the average sales for the year 2003
+-- Calculating the average sales for all the years
 SELECT
-	AVG(Sales)
-	
+	ROUND(AVG(Sales),2),
+	year_id
 FROM
 	sales_data
-WHERE
-	year_id = 2003;
+GROUP BY
+	year_id
+ORDER BY
+	year_id
 
--- Calculating the average sales for the year 2004
 
-SELECT
-	AVG(Sales)
-	
-FROM
-	sales_data
-WHERE
-	year_id = 2004;
-	
--- Calculating the average sales for the year 2005 
-SELECT
-	AVG(Sales)
-	
-FROM
-	sales_data
-WHERE
-	year_id = 2005;
 	
 -- Calculating the overall average sales 
 SELECT
-	avg(Sales)
-	
+	avg(Sales)	
 FROM
 	sales_data;
 
 
--- Calculating the max sales for the year 2003 
+-- Calculating the max sales for each of the years
 SELECT
-	MAX(Sales)
-	
+	MAX(Sales),
+	year_id
 FROM
 	sales_data
-WHERE
-	year_id = 2003;
-
--- Calculating the max sales for the year 2004
-SELECT
-	MAX(Sales)
-	
-FROM
-	sales_data
-WHERE
-	year_id = 2004;
-
--- Calculating the max sales for the year 2005
-SELECT
-	MAX(Sales)
-	
-FROM
-	sales_data
-WHERE
-	year_id = 2005;
+GROUP BY 
+	year_id
+ORDER BY
+	year_id
 	
 -- Calculating the overall max sales
 
@@ -227,33 +78,17 @@ FROM
 	sales_data;
 
 	
--- Calculate  the min sales for the year 2003 
+-- Calculate  the min sales for each of the years
 SELECT
-	min(Sales)
-	
+	min(Sales),
+	year_id
 FROM
 	sales_data
-WHERE
-	year_id = 2003;
+GROUP BY 
+	year_id
+ORDER BY 
+	year_id
 	
--- calculating the min sales for the year 2004
-SELECT
-	min(Sales)
-	
-FROM
-	sales_data
-WHERE
-	year_id = 2004;
-	
--- calculating the min sales for the year 2005 
-SELECT
-	min(Sales)
-	
-FROM
-	sales_data
-WHERE
-	year_id = 2005;
-
 -- calculating the overall min sales 
 SELECT
 	min(Sales)
@@ -308,6 +143,43 @@ ORDER BY
 	number_of_company_orders DESC,
 	amount_of_products_ordered DESC,
 	total_revenue DESC;
+
+-- Figuring out the Customer - Product Relationship
+WITH NumberedOrders AS (
+    SELECT
+        customer_name,
+        product_code,
+        product_line,
+        COUNT(*) AS number_of_company_orders,
+        SUM(quantity_ordered) as amount_of_products_ordered,
+        SUM(sales) AS total_revenue,
+        ROW_NUMBER() OVER(PARTITION BY customer_name ORDER BY COUNT(*) DESC) AS row_num
+    FROM
+        sales_data
+    GROUP BY
+        customer_name,
+        product_code,
+        product_line
+)
+
+SELECT
+    customer_name,
+    product_code,
+    product_line,
+    number_of_company_orders,
+    amount_of_products_ordered,
+    total_revenue,
+	row_num
+FROM
+    NumberedOrders
+WHERE
+    row_num <= 2
+ORDER BY
+    number_of_company_orders DESC,
+	total_revenue DESC,
+	amount_of_products_ordered DESC,
+	customer_name DESC;
+
 
 -- Categorize orders by size based on sales
 SELECT
@@ -376,6 +248,23 @@ SELECT
 	*
 FROM
 	product_revenue
+	
+-- This query retrieves all sales data for each product line, 
+-- along with the maximum sales within each product line and a ranking based on sales values in descending order. 
+-- The outer query then filters the results to only include records 
+-- with a rank of less than 4, effectively getting the top 3 sales records for each product line.
+SELECT
+	*
+FROM(
+		SELECT
+		product_line,
+		sales,
+		MAX(Sales) OVER(PARTITION BY product_line) AS max_sales,
+		RANK() OVER(PARTITION BY product_line ORDER BY sales DESC) AS row_number
+	FROM
+		sales_data) AS S
+WHERE
+	S.row_number < 4;
 
 		
 
