@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notion Study Card Formatter</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f7f5;
+      --panel: #ffffff;
+      --border: #deded9;
+      --text: #1c1c1b;
+      --muted: #6b6b68;
+      --accent: #2f6fed;
+      --shadow: 0 8px 18px rgba(0, 0, 0, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    header {
+      padding: 20px 28px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      padding: 12px 28px 28px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      min-height: 70vh;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    textarea,
+    input,
+    select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fff;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 240px;
+      line-height: 1.5;
+    }
+
+    .field {
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: auto;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #e7e7e2;
+      color: var(--text);
+      transition: transform 0.1s ease, background 0.2s ease;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .output {
+      flex: 1;
+      margin-bottom: 12px;
+    }
+
+    .output textarea {
+      min-height: 360px;
+      background: #fafafa;
+    }
+
+    .stats {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .warning {
+      color: #b42318;
+      font-size: 13px;
+      margin-top: 6px;
+      min-height: 18px;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        min-height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Notion Study Card Formatter</h1>
+    <p>Paste messy notes → get a clean, Notion-ready study card.</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Raw Input</h2>
+      <div class="field">
+        <label for="titleInput">Title (optional)</label>
+        <input id="titleInput" type="text" placeholder="Auto-generated if empty" />
+      </div>
+      <div class="field">
+        <label for="rawInput">Raw text</label>
+        <textarea id="rawInput" placeholder="Paste NotebookLM output or any messy notes here..."></textarea>
+      </div>
+      <div class="field">
+        <label for="styleSelect">Output style</label>
+        <select id="styleSelect">
+          <option value="notion">Notion Markdown</option>
+          <option value="plain">Plain text</option>
+        </select>
+      </div>
+      <div class="warning" id="warning"></div>
+      <div class="actions">
+        <button class="primary" id="formatBtn">Format Study Card</button>
+        <button id="copyBtn">Copy Output</button>
+        <button id="clearBtn">Clear</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Formatted Output</h2>
+      <div class="output">
+        <textarea id="output" readonly placeholder="Your formatted study card will appear here..."></textarea>
+      </div>
+      <div class="stats" id="stats">
+        <span>Words: 0</span>
+        <span>Bullets: 0</span>
+        <span>Questions: 0</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const rawInput = document.getElementById("rawInput");
+    const titleInput = document.getElementById("titleInput");
+    const styleSelect = document.getElementById("styleSelect");
+    const output = document.getElementById("output");
+    const warning = document.getElementById("warning");
+    const formatBtn = document.getElementById("formatBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const stats = document.getElementById("stats");
+
+    const fillerPatterns = [
+      /^sure!?$/i,
+      /^here'?s what i found/i,
+      /^here'?s a summary/i,
+      /^of course/i,
+      /^certainly/i,
+      /^let'?s dive in/i,
+      /^summary:/i,
+      /^overview:/i
+    ];
+
+    const codePatterns = [/\bimport\b/i, /\bdef\b/i, /=/, /\.fit\(/i, /\bclass\b/i, /\bfunction\b/i];
+
+    function saveState() {
+      const state = {
+        raw: rawInput.value,
+        title: titleInput.value,
+        style: styleSelect.value
+      };
+      localStorage.setItem("studyCardState", JSON.stringify(state));
+    }
+
+    function loadState() {
+      const state = localStorage.getItem("studyCardState");
+      if (!state) return;
+      try {
+        const parsed = JSON.parse(state);
+        rawInput.value = parsed.raw || "";
+        titleInput.value = parsed.title || "";
+        styleSelect.value = parsed.style || "notion";
+      } catch (error) {
+        console.warn("Failed to load saved state", error);
+      }
+    }
+
+    function normalizeText(text) {
+      const lines = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => !fillerPatterns.some((pattern) => pattern.test(line)));
+
+      const cleaned = [];
+      let emptyStreak = 0;
+      for (const line of lines) {
+        if (!line) {
+          emptyStreak += 1;
+          if (emptyStreak < 2) cleaned.push("");
+        } else {
+          emptyStreak = 0;
+          cleaned.push(line);
+        }
+      }
+      return cleaned.join("\n").trim();
+    }
+
+    function firstMeaningfulLine(text) {
+      const lines = text.split(/\r?\n/).map((line) => line.trim());
+      return lines.find((line) => line && !/^[-*\d]+[.)]?\s*/.test(line)) || "Study Card";
+    }
+
+    function extractBullets(lines) {
+      return lines
+        .filter((line) => /^[-*•]|^\d+[.)]/.test(line))
+        .map((line) => line.replace(/^[-*•]|^\d+[.)]/, "").trim())
+        .filter(Boolean);
+    }
+
+    function splitSentences(text) {
+      return text
+        .replace(/\s+/g, " ")
+        .split(/(?<=[.!?])\s+/)
+        .map((sentence) => sentence.trim())
+        .filter(Boolean);
+    }
+
+    function selectSummarySentences(sentences, min = 3, max = 7) {
+      const scored = sentences
+        .map((sentence) => {
+          const score = ["is", "are", "means", "used for", "refers to", "focuses on"].reduce(
+            (total, cue) => total + (sentence.toLowerCase().includes(cue) ? 1 : 0),
+            0
+          );
+          return { sentence, score, length: sentence.length };
+        })
+        .sort((a, b) => b.score - a.score || a.length - b.length);
+
+      const picked = scored.slice(0, max).map((item) => item.sentence);
+      while (picked.length < min && scored.length > picked.length) {
+        picked.push(scored[picked.length].sentence);
+      }
+      return picked.slice(0, max);
+    }
+
+    function extractKeyConcepts(text) {
+      const conceptMap = new Map();
+      const titleCaseMatches = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\b/g) || [];
+      const isPatternMatches = text.match(/\b([A-Z][A-Za-z0-9\- ]{2,})\s+is\b/g) || [];
+      const candidates = [...titleCaseMatches, ...isPatternMatches.map((match) => match.replace(/\s+is$/i, ""))];
+
+      for (const term of candidates) {
+        const cleaned = term.trim();
+        if (cleaned.length < 3) continue;
+        conceptMap.set(cleaned, (conceptMap.get(cleaned) || 0) + 1);
+      }
+
+      const sorted = [...conceptMap.entries()].sort((a, b) => b[1] - a[1]).map(([term]) => term);
+      return sorted.slice(0, 12);
+    }
+
+    function findMistakes(lines) {
+      const cues = /(mistake|common|avoid|pitfall|don'?t|wrong|error)/i;
+      const mistakes = lines.filter((line) => cues.test(line));
+      if (mistakes.length) {
+        return mistakes.map((line) => line.replace(/^[-*•]|^\d+[.)]/, "").trim()).filter(Boolean);
+      }
+      return [];
+    }
+
+    function detectCodeLines(lines) {
+      return lines.filter((line) => codePatterns.some((pattern) => pattern.test(line)));
+    }
+
+    function buildOneLiner(title, summaryBullets) {
+      const base = summaryBullets[0] || "A focused overview of the topic.";
+      return `${title} in one sentence: ${base.replace(/\.$/, "")}.`;
+    }
+
+    function buildQuestions(title, concepts) {
+      const baseTerms = concepts.length ? concepts : [title];
+      const templates = [
+        (term) => `What is ${term}?`,
+        (term) => `Why do we use ${term}?`,
+        (term) => `When would you choose ${term} over alternatives?`,
+        (term) => `What happens if ${term} is misapplied?`,
+        (term) => `How do you detect or avoid issues with ${term}?`
+      ];
+
+      return templates.map((template, index) => template(baseTerms[index % baseTerms.length]));
+    }
+
+    function buildMiniPractice(codeLines, title) {
+      if (codeLines.length) {
+        return {
+          task: `Refactor a small snippet from the notes into a runnable example (e.g., wrap ${codeLines[0]} in a tiny script).`,
+          outcome: "You can run the snippet and observe the expected output/behavior."
+        };
+      }
+      return {
+        task: `Create a tiny ${title} example with synthetic data or a toy scenario.`,
+        outcome: "You can explain the result and verify the workflow works end-to-end."
+      };
+    }
+
+    function formatStudyCard() {
+      warning.textContent = "";
+      const raw = rawInput.value.trim();
+      if (!raw) {
+        warning.textContent = "Please paste some raw input first.";
+        return;
+      }
+
+      const cleaned = normalizeText(raw);
+      const lines = cleaned.split(/\r?\n/).filter((line) => line.length > 0);
+      const title = titleInput.value.trim() || firstMeaningfulLine(cleaned);
+
+      const bullets = extractBullets(lines);
+      const sentences = splitSentences(cleaned);
+      const summary = bullets.length ? bullets.slice(0, 7) : selectSummarySentences(sentences);
+      const concepts = extractKeyConcepts(cleaned);
+      const mistakes = findMistakes(lines);
+      const questions = buildQuestions(title, concepts).slice(0, 5);
+      const codeLines = detectCodeLines(lines);
+      const miniPractice = buildMiniPractice(codeLines, title);
+
+      const summaryBullets = summary.length ? summary : ["(Add 3–7 key summary bullets)"];
+      const conceptBullets = concepts.length
+        ? concepts.map((term) => `- **${term}**: ${sentences.find((s) => s.includes(term)) || "Add a short explanation."}`)
+        : ["- **Key term**: Add a short explanation."];
+      const mistakeBullets = mistakes.length
+        ? mistakes.slice(0, 8).map((mistake) => `- ${mistake}`)
+        : [
+            "- Confusing similar concepts or steps.",
+            "- Skipping validation or evaluation.",
+            "- Applying the method without checking assumptions."
+          ];
+
+      const formatted = [
+        `# ${title}`,
+        "",
+        "## 핵심 요약 (Key Summary)",
+        ...summaryBullets.map((item) => `- ${item}`),
+        "",
+        "## 핵심 개념 (Key Concepts)",
+        ...conceptBullets,
+        "",
+        "## 자주 하는 실수 (Common Mistakes)",
+        ...mistakeBullets,
+        "",
+        "## 체크 질문 (Active Recall)",
+        ...questions.map((question, index) => `${index + 1}. ${question}`),
+        "",
+        "## 미니 실습 (Mini Practice)",
+        `- Task: ${miniPractice.task}`,
+        `- Expected outcome: ${miniPractice.outcome}`,
+        "",
+        "## 한 줄 정의 (One-liner)",
+        `> ${buildOneLiner(title, summaryBullets)}`
+      ].join("\n");
+
+      output.value = styleSelect.value === "plain" ? formatted.replace(/#/g, "") : formatted;
+      updateStats(raw, formatted);
+      saveState();
+    }
+
+    function updateStats(raw, formatted) {
+      const wordCount = raw.split(/\s+/).filter(Boolean).length;
+      const bulletCount = (formatted.match(/^[-*•]/gm) || []).length;
+      const questionCount = (formatted.match(/^\d+\./gm) || []).length;
+      stats.innerHTML = `
+        <span>Words: ${wordCount}</span>
+        <span>Bullets: ${bulletCount}</span>
+        <span>Questions: ${questionCount}</span>
+      `;
+    }
+
+    formatBtn.addEventListener("click", formatStudyCard);
+
+    copyBtn.addEventListener("click", () => {
+      if (!output.value.trim()) {
+        warning.textContent = "Nothing to copy yet.";
+        return;
+      }
+      navigator.clipboard.writeText(output.value).then(() => {
+        warning.textContent = "Copied to clipboard.";
+        setTimeout(() => (warning.textContent = ""), 1500);
+      });
+    });
+
+    clearBtn.addEventListener("click", () => {
+      rawInput.value = "";
+      titleInput.value = "";
+      output.value = "";
+      warning.textContent = "";
+      stats.innerHTML = "<span>Words: 0</span><span>Bullets: 0</span><span>Questions: 0</span>";
+      saveState();
+    });
+
+    [rawInput, titleInput, styleSelect].forEach((el) => {
+      el.addEventListener("input", saveState);
+    });
+
+    loadState();
+  </script>
+</body>
+</html>
